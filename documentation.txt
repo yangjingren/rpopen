@@ -1,0 +1,37 @@
+Yang J. Ren
+Documentation
+
+Files:
+rpopen.c
+Client library implementing rpopen, takes as input host, port, and command.
+If host or port is 0, sets the host and port to the environmental variables PPORT and PHOST.
+Client sends the command to the host on the port indicated.
+rpopen-demo.c
+Default program to test the implementation of rpopen.c
+change the port, host, command to other variables in order to test the client.
+rpserver.c
+Accepts the command from the client application and runs it after redirecting the output from the stdout into the socket to send back to the client.
+
+
+Compile and Run:
+type into command line after changing the directory to the correct folder
+$ make
+$ export PHOST=localhost
+$ export PPORT=2000
+this sets the environmental variables to host local and port 2000
+as well as compiles the application
+to run the demo program, first start the server
+$ ./rpserver
+then open another bash shell in the correct folder
+$ ./rpopen-demo
+this will run the application and return the server results to the client bash
+** Note**
+rpserver accepts the tag of [-p port] ex:
+$./rpserver -p 2000
+
+
+Tests:
+ran the rpdemo with no host/port
+ran the rpdemo with a host and port
+ran the rp demo with ps aux|less
+all success

@@ -1,4 +1,5 @@
 /*
+	Yang J. Ren
 	rpserver: remote popen server
 */
 #include <stdio.h>
@@ -10,7 +11,7 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <unistd.h>
-
+#define BUFSIZE 8096
 void cm(int sockfd);
 
 int main(int argc, char **argv)
@@ -30,7 +31,6 @@ int main(int argc, char **argv)
 				fprintf(stderr, usage, argv[0]);
 				exit(1);
 			}
-
 		}
 		else{
 			fprintf(stderr, usage, argv[0]);
@@ -38,6 +38,7 @@ int main(int argc, char **argv)
 		}
 	}
 	else if (argc == 1){
+		//parse PPORT into port
 		char* envPort;
 		envPort = getenv("PPORT");
 		if (envPort == NULL){
@@ -55,10 +56,9 @@ int main(int argc, char **argv)
 	}
 
 	int listenfd, connfd, ret;
-	pid_t pid;
 	socklen_t clilen;
 	struct sockaddr_in cliaddr, servaddr;
-
+	clilen = sizeof(cliaddr);
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
 
 	// Allows for socket reuse
@@ -72,14 +72,16 @@ int main(int argc, char **argv)
 	servaddr.sin_port = htons (port);
 
 	//bind to the port
-	bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
+	if((ret=bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr)))!=0){
+		fprintf(stderr,"Bind error.\n");
+	}
 
 	//listen for incoming connections
 	int maxConn = 8;
-	listen(listenfd, maxConn);
-
+	if((ret=listen(listenfd, maxConn))!=0){
+		fprintf(stderr, "Listen error.\n");
+	}
 	while (1){
-		clilen = sizeof(cliaddr);
 		connfd = accept(listenfd, (struct sockaddr *)&cliaddr, &clilen);
 		cm(connfd);
 		close(connfd);
@@ -87,6 +89,7 @@ int main(int argc, char **argv)
 }
 
 void cm(int sockfd){
+	//child process check
 	switch (fork()){
 			case -1:
 			fprintf(stderr, "Fork failed!\n");
@@ -96,13 +99,15 @@ void cm(int sockfd){
 			case 0:
 			break;
 		}
-	char command[8096];
-	read(sockfd, command, 8096);
+	//popen simulator
+	char command[BUFSIZE];
+	read(sockfd, command, BUFSIZE);
 	shutdown(sockfd,SHUT_RD);
 	close(0);
 	close(1);
 	dup2(sockfd, 1);
 	execlp("/bin/sh", "/bin/sh", "-c", command, (char*)0);
+	fprintf(stderr, "Unknown command: %s", command);
 	exit(1);
 }
 

@@ -1,4 +1,5 @@
 /*
+	Yang J. Ren
 	rpopen: remote popen function
 */
 #include <stdio.h>
@@ -7,33 +8,63 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/errno.h>
-#include <sys/wait.h>
 #include <string.h>
-FILE *
-rpopen(char *host, int port, char *cmd)
-{
+FILE *rpopen(char *host, int port, char *cmd){
 	int sockfd;
-struct sockaddr_in servaddr;
-struct hostent *hostp;
-int portt = 2000;
-int hostname = "127.0.0.1";
-sockfd = socket(AF_INET,SOCK_STREAM,0);
-bzero(&servaddr, sizeof(servaddr));
-servaddr.sin_family = AF_INET;
-servaddr.sin_port = htons(portt);
-servaddr.sin_addr.s_addr =inet_addr(hostname);
-//hostp= gethostbyname(hostname);
-//memcpy(&serveraddr.sin_addr, hostp->h_addr,sizeof(serveraddr.sin_addr));
+	int retVal;
+	struct sockaddr_in servaddr;
 
-int ret;
-if((ret=connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)))!=0){
-	printf("error\n");
-}
-char message[]="ls -1L /etc";
-write(sockfd, message, strlen(message));
-char line[8096];
-FILE *fp;
-fp = fdopen(sockfd,"r");
+	if(port == 0){
+		char* envPort;
+		envPort = getenv("PPORT");
+		if (envPort == NULL){
+			fprintf(stderr, "PPORT has not been set.\n");
+			exit(1);
+		}
+		else{
+			port = atoi(envPort);
+		}
+	}
+	if (host == NULL || host ==""){
+		char* envHost;
+		envHost = getenv("PHOST");
+		if (envHost == NULL){
+			fprintf(stderr, "PHOST has not been set.\n");
+			exit(1);
+		}
+		else{
+			host = envHost;
+		}
+	}
+	//inet_pton can't process localhost 
+	if (strcasecmp(host,"localhost")==0){
+				host = "127.0.0.1";
+	}
+	printf("Port: %i\n", port);
+	printf("Host: %s\n", host); 
+
+	//open socket
+	sockfd = socket(AF_INET,SOCK_STREAM,0);
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(port);
+	//find hostname
+	if(inet_pton(AF_INET, host, &servaddr.sin_addr)<=0){
+		fprintf(stderr, "Inet_pton error for %s.\n", host);
+		exit(1);
+	}
+
+	//open connection to host
+	if((retVal=connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)))!=0){
+		fprintf(stderr,"Connect error.\n");
+	}
+
+	//write command to socket file descriptor
+	write(sockfd, cmd, strlen(cmd));
+
+	//convert socket file descriptor to file pointer
+	FILE *fp;
+	fp = fdopen(sockfd,"r");
 
 	return fp;
 }
